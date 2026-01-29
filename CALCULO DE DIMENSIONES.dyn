@@ -1,0 +1,160 @@
+{
+  "Uuid": "9d7bc162-ad5b-492f-84d0-12ae33ffc675",
+  "IsCustomNode": false,
+  "Description": "",
+  "Name": "CALCULO DE DIMENSIONES",
+  "ElementResolver": {
+    "ResolutionMap": {}
+  },
+  "Inputs": [],
+  "Outputs": [],
+  "Nodes": [
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "Code": "import clr\r\n\r\nclr.AddReference('RevitAPI')\r\nfrom Autodesk.Revit.DB import *\r\n\r\nclr.AddReference('RevitServices')\r\nimport RevitServices\r\nfrom RevitServices.Persistence import DocumentManager\r\nfrom RevitServices.Transactions import TransactionManager\r\n\r\ndoc = DocumentManager.Instance.CurrentDBDocument\r\n\r\n# Colectar todos los elementos de modelo (instancias)\r\ncollector = FilteredElementCollector(doc).WhereElementIsNotElementType().ToElements()\r\n\r\nopt = Options()\r\nopt.DetailLevel = ViewDetailLevel.Fine\r\nopt.ComputeReferences = True\r\n\r\nTransactionManager.Instance.EnsureInTransaction(doc)\r\n\r\ncontador = 0\r\n\r\nfor el in collector:\r\n    try:\r\n        geom = el.get_Geometry(opt)\r\n        if not geom: continue\r\n        \r\n        # Variables para almacenar el máximo del elemento actual\r\n        vol_total = 0.0\r\n        max_f_area = 0.0\r\n        max_e_long = 0.0\r\n        tiene_geometria = False\r\n\r\n        # Función para analizar cada sólido individualmente\r\n        def analizar_solido(s, v_acc, a_max, l_max):\r\n            if s and s.Volume > 0.0001: # Ignorar sólidos insignificantes\r\n                v_acc += s.Volume\r\n                for face in s.Faces:\r\n                    if face.Area > a_max:\r\n                        a_max = face.Area\r\n                    for loop in face.EdgeLoops:\r\n                        for edge in loop:\r\n                            if edge.ApproximateLength > l_max:\r\n                                l_max = edge.ApproximateLength\r\n                return v_acc, a_max, l_max, True\r\n            return v_acc, a_max, l_max, False\r\n\r\n        # Extraer sólidos de la geometría (incluyendo instancias)\r\n        for obj in geom:\r\n            if isinstance(obj, Solid):\r\n                vol_total, max_f_area, max_e_long, tiene_geometria = analizar_solido(obj, vol_total, max_f_area, max_e_long)\r\n            elif isinstance(obj, GeometryInstance):\r\n                for inst_obj in obj.GetInstanceGeometry():\r\n                    if isinstance(inst_obj, Solid):\r\n                        vol_total, max_f_area, max_e_long, tiene_geometria = analizar_solido(inst_obj, vol_total, max_f_area, max_e_long)\r\n\r\n        if tiene_geometria:\r\n            # --- GESTIÓN DE UNIDADES ---\r\n            # Si tus parámetros son de tipo \"Volumen\", \"Área\" y \"Longitud\", \r\n            # Revit espera pies internos (Internal Units). NO multipliques por 0.3048.\r\n            # El sistema hará la conversión automática a metros en la interfaz.\r\n            \r\n            p_vol = el.LookupParameter(\"VOLUMEN INTEGRADO\")\r\n            p_area = el.LookupParameter(\"AREA INTEGRADO\")\r\n            p_long = el.LookupParameter(\"LONGITUD INTEGRADO\")\r\n            \r\n            if p_vol and not p_vol.IsReadOnly:\r\n                p_vol.Set(vol_total)\r\n            if p_area and not p_area.IsReadOnly:\r\n                p_area.Set(max_f_area)\r\n            if p_long and not p_long.IsReadOnly:\r\n                p_long.Set(max_e_long)\r\n                \r\n            contador += 1\r\n    except:\r\n        continue\r\n\r\nTransactionManager.Instance.TransactionTaskDone()\r\n\r\nOUT = \"Se actualizaron {} elementos con éxito.\".format(contador)",
+      "Engine": "IronPython2",
+      "EngineName": "IronPython2",
+      "VariableInputPorts": true,
+      "Id": "583d50a581ce4336a573cd1848f7e2ac",
+      "NodeType": "PythonScriptNode",
+      "Inputs": [
+        {
+          "Id": "d2bc2bc3667243a188099ed61dd013a4",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "ed1244451b004fe98b4bccdee0c14393",
+          "Name": "OUT",
+          "Description": "Resultado de la secuencia de comandos de Python",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Ejecuta una secuencia de comandos de Python incrustada."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Watch, CoreNodeModels",
+      "WatchWidth": 320.0,
+      "WatchHeight": 38.0,
+      "Id": "a6a377e56df447989685e72f8915cf25",
+      "NodeType": "ExtensionNode",
+      "Inputs": [
+        {
+          "Id": "dc0ebe2b4542472fb63ce7522edd024d",
+          "Name": "",
+          "Description": "Nodo desde el que se mostrará la salida",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "1942680b5e67470ca81664583d1a4e37",
+          "Name": "",
+          "Description": "Salida del nodo",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Visualice la salida del nodo."
+    }
+  ],
+  "Connectors": [
+    {
+      "Start": "ed1244451b004fe98b4bccdee0c14393",
+      "End": "dc0ebe2b4542472fb63ce7522edd024d",
+      "Id": "47b21f4b31d345df949450e4b46d4153",
+      "IsHidden": "False"
+    }
+  ],
+  "Dependencies": [],
+  "NodeLibraryDependencies": [],
+  "Thumbnail": "",
+  "GraphDocumentationURL": null,
+  "ExtensionWorkspaceData": [
+    {
+      "ExtensionGuid": "28992e1d-abb9-417f-8b1b-05e053bee670",
+      "Name": "Propiedades",
+      "Version": "2.19",
+      "Data": {}
+    },
+    {
+      "ExtensionGuid": "DFBD9CC0-DB40-457A-939E-8C8555555A9D",
+      "Name": "Generative Design",
+      "Version": "6.1",
+      "Data": {}
+    }
+  ],
+  "Author": "",
+  "Linting": {
+    "activeLinter": "Ninguno",
+    "activeLinterId": "7b75fb44-43fd-4631-a878-29f4d5d8399a",
+    "warningCount": 0,
+    "errorCount": 0
+  },
+  "Bindings": [],
+  "View": {
+    "Dynamo": {
+      "ScaleFactor": 1.0,
+      "HasRunWithoutCrash": true,
+      "IsVisibleInDynamoLibrary": true,
+      "Version": "2.19.3.6394",
+      "RunType": "Manual",
+      "RunPeriod": "1000"
+    },
+    "Camera": {
+      "Name": "_Vista preliminar en segundo plano",
+      "EyeX": -17.0,
+      "EyeY": 24.0,
+      "EyeZ": 50.0,
+      "LookX": 12.0,
+      "LookY": -13.0,
+      "LookZ": -58.0,
+      "UpX": 0.0,
+      "UpY": 1.0,
+      "UpZ": 0.0
+    },
+    "ConnectorPins": [],
+    "NodeViews": [
+      {
+        "Id": "583d50a581ce4336a573cd1848f7e2ac",
+        "Name": "Python Script",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 371.0,
+        "Y": 121.0
+      },
+      {
+        "Id": "a6a377e56df447989685e72f8915cf25",
+        "Name": "Watch",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 687.0,
+        "Y": 121.0
+      }
+    ],
+    "Annotations": [],
+    "X": 76.792500000000018,
+    "Y": 209.0275,
+    "Zoom": 0.8425
+  }
+}
