@@ -1,0 +1,203 @@
+{
+  "Uuid": "921ff5a3-4825-441f-b361-f8b87b4f4950",
+  "IsCustomNode": false,
+  "Description": "",
+  "Name": "COPIAR NIVELES A NIVEL INTEGRADO",
+  "ElementResolver": {
+    "ResolutionMap": {}
+  },
+  "Inputs": [],
+  "Outputs": [],
+  "Nodes": [
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "Code": "import clr\r\n\r\n# Importar Revit API\r\nclr.AddReference('RevitAPI')\r\nfrom Autodesk.Revit.DB import *\r\n\r\n# Importar DocumentManager y TransactionManager\r\nclr.AddReference('RevitServices')\r\nimport RevitServices\r\nfrom RevitServices.Persistence import DocumentManager\r\nfrom RevitServices.Transactions import TransactionManager\r\n\r\ndoc = DocumentManager.Instance.CurrentDBDocument\r\n\r\n# 1. Obtener todos los elementos del modelo que no sean tipos\r\ncol = FilteredElementCollector(doc).WhereElementIsNotElementType().ToElements()\r\n\r\n# 2. Lista de parámetros en orden de prioridad\r\nnombres_busqueda = [\"Nivel de referencia\", \"Nivel\", \"Nivel base\", \"Restricción de base\"]\r\nparametro_destino = \"NIVEL INTEGRADO\"\r\n\r\nTransactionManager.Instance.EnsureInTransaction(doc)\r\n\r\nconteo_exitos = 0\r\n\r\nfor el in col:\r\n    # Solo procesar elementos que tengan el parámetro destino\r\n    p_dest = el.LookupParameter(parametro_destino)\r\n    \r\n    if p_dest and not p_dest.IsReadOnly:\r\n        valor_encontrado = None\r\n        \r\n        # 3. Buscar el primer parámetro que coincida y tenga valor\r\n        for nombre in nombres_busqueda:\r\n            p_origen = el.LookupParameter(nombre)\r\n            \r\n            if p_origen and p_origen.HasValue:\r\n                # Intentamos obtener el valor como texto (Nombre del nivel)\r\n                valor_encontrado = p_origen.AsValueString()\r\n                \r\n                # Si AsValueString falla (a veces pasa en ciertos parámetros), \r\n                # intentamos obtener el nombre a través del ElementId\r\n                if not valor_encontrado:\r\n                    id_nivel = p_origen.AsElementId()\r\n                    if id_nivel and id_nivel != ElementId.InvalidElementId:\r\n                        nivel_obj = doc.GetElement(id_nivel)\r\n                        if nivel_obj:\r\n                            valor_encontrado = nivel_obj.Name\r\n                \r\n                if valor_encontrado:\r\n                    break\r\n        \r\n        # 4. Escribir el valor en NIVEL INTEGRADO\r\n        if valor_encontrado:\r\n            try:\r\n                p_dest.Set(valor_encontrado)\r\n                conteo_exitos += 1\r\n            except:\r\n                continue\r\n\r\nTransactionManager.Instance.TransactionTaskDone()\r\n\r\n# Salida con el conteo de elementos afectados\r\nOUT = \"Proceso completado. Se actualizaron {} elementos.\".format(conteo_exitos)",
+      "Engine": "IronPython2",
+      "EngineName": "IronPython2",
+      "VariableInputPorts": true,
+      "Id": "cdcd4d8d993d4510ac6cec5094d701a5",
+      "NodeType": "PythonScriptNode",
+      "Inputs": [
+        {
+          "Id": "caf09550350e4e6d9c3c660743f55fb6",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "a304433fe93d4266a3ad4ea65a44818d",
+          "Name": "OUT",
+          "Description": "Resultado de la secuencia de comandos de Python",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Ejecuta una secuencia de comandos de Python incrustada."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Watch, CoreNodeModels",
+      "WatchWidth": 395.0,
+      "WatchHeight": 38.0,
+      "Id": "9e84fa169dff4d4cad8de0f903e3b8c0",
+      "NodeType": "ExtensionNode",
+      "Inputs": [
+        {
+          "Id": "33f8dc67d050414e8cc72c19f1e6728c",
+          "Name": "",
+          "Description": "Nodo desde el que se mostrará la salida",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "baf07f3d080b4da5b8990a64e8312581",
+          "Name": "",
+          "Description": "Salida del nodo",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Visualice la salida del nodo."
+    },
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "Code": "# Carga las bibliotecas de DesignScript y normas de Python.\r\nimport sys\r\nimport clr\r\nclr.AddReference('ProtoGeometry')\r\nfrom Autodesk.DesignScript.Geometry import *\r\n\r\n# Las entradas de este nodo se almacenan como lista en las variables IN.\r\ndataEnteringNode = IN\r\n\r\n# Incluya el código debajo de esta línea\r\n\r\n# Asigne la salida a la variable OUT.\r\nOUT = 0",
+      "Engine": "IronPython2",
+      "EngineName": "IronPython2",
+      "VariableInputPorts": true,
+      "Id": "2e62ed69955849b7ab9341f6842a185b",
+      "NodeType": "PythonScriptNode",
+      "Inputs": [
+        {
+          "Id": "238ed03a427a468eaacb400874c900d8",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "17016551ed4b4c3db554e404e8dadf9a",
+          "Name": "OUT",
+          "Description": "Resultado de la secuencia de comandos de Python",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Ejecuta una secuencia de comandos de Python incrustada."
+    }
+  ],
+  "Connectors": [
+    {
+      "Start": "a304433fe93d4266a3ad4ea65a44818d",
+      "End": "33f8dc67d050414e8cc72c19f1e6728c",
+      "Id": "2a97c723b9f24c66a741e2c47d8b7096",
+      "IsHidden": "False"
+    }
+  ],
+  "Dependencies": [],
+  "NodeLibraryDependencies": [],
+  "Thumbnail": "",
+  "GraphDocumentationURL": null,
+  "ExtensionWorkspaceData": [
+    {
+      "ExtensionGuid": "28992e1d-abb9-417f-8b1b-05e053bee670",
+      "Name": "Propiedades",
+      "Version": "2.19",
+      "Data": {}
+    },
+    {
+      "ExtensionGuid": "DFBD9CC0-DB40-457A-939E-8C8555555A9D",
+      "Name": "Generative Design",
+      "Version": "6.1",
+      "Data": {}
+    }
+  ],
+  "Author": "",
+  "Linting": {
+    "activeLinter": "Ninguno",
+    "activeLinterId": "7b75fb44-43fd-4631-a878-29f4d5d8399a",
+    "warningCount": 0,
+    "errorCount": 0
+  },
+  "Bindings": [],
+  "View": {
+    "Dynamo": {
+      "ScaleFactor": 1.0,
+      "HasRunWithoutCrash": true,
+      "IsVisibleInDynamoLibrary": true,
+      "Version": "2.19.3.6394",
+      "RunType": "Manual",
+      "RunPeriod": "1000"
+    },
+    "Camera": {
+      "Name": "_Vista preliminar en segundo plano",
+      "EyeX": -17.0,
+      "EyeY": 24.0,
+      "EyeZ": 50.0,
+      "LookX": 12.0,
+      "LookY": -13.0,
+      "LookZ": -58.0,
+      "UpX": 0.0,
+      "UpY": 1.0,
+      "UpZ": 0.0
+    },
+    "ConnectorPins": [],
+    "NodeViews": [
+      {
+        "Id": "cdcd4d8d993d4510ac6cec5094d701a5",
+        "Name": "Python Script",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 252.00890207715133,
+        "Y": 105.60534124629083
+      },
+      {
+        "Id": "9e84fa169dff4d4cad8de0f903e3b8c0",
+        "Name": "Watch",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 639.99406528189911,
+        "Y": 111.60534124629078
+      },
+      {
+        "Id": "2e62ed69955849b7ab9341f6842a185b",
+        "Name": "Python Script",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 610.38278931750733,
+        "Y": 429.01186943620178
+      }
+    ],
+    "Annotations": [],
+    "X": 144.7525,
+    "Y": 132.5575,
+    "Zoom": 0.8425
+  }
+}

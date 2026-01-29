@@ -1,0 +1,160 @@
+{
+  "Uuid": "89f64d77-d032-42bc-985a-acb251528f5d",
+  "IsCustomNode": false,
+  "Description": "",
+  "Name": "CARGAR PARÁMETROS COMPARTIDOS",
+  "ElementResolver": {
+    "ResolutionMap": {}
+  },
+  "Inputs": [],
+  "Outputs": [],
+  "Nodes": [
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "Code": "import clr\r\nclr.AddReference('RevitAPI')\r\nfrom Autodesk.Revit.DB import *\r\n\r\nclr.AddReference('RevitServices')\r\nimport RevitServices\r\nfrom RevitServices.Persistence import DocumentManager\r\nfrom RevitServices.Transactions import TransactionManager\r\n\r\ndoc = DocumentManager.Instance.CurrentDBDocument\r\napp = doc.Application\r\n\r\n# --- CONFIGURACIÓN ---\r\nruta_txt = r\"Z:\\0.0 BIM\\PARAMETROS COMPARTIDOS.txt\"\r\nnombres_parametros = [\"MATERIAL INTEGRADO\", \"NIVEL INTEGRADO\"]\r\n\r\n# 1. Cargar archivo de parámetros\r\napp.SharedParametersFilename = ruta_txt\r\ndef_file = app.OpenSharedParameterFile()\r\n\r\nif not def_file:\r\n    OUT = \"Error: No se pudo abrir el archivo de parámetros en la ruta especificada.\"\r\nelse:\r\n    # 2. Preparar categorías (Selecciona todas las que permiten parámetros)\r\n    cat_set = app.Create.NewCategorySet()\r\n    for cat in doc.Settings.Categories:\r\n        if cat.AllowsBoundParameters:\r\n            cat_set.Insert(cat)\r\n\r\n    # 3. Iniciar Transacción\r\n    TransactionManager.Instance.EnsureInTransaction(doc)\r\n    \r\n    resultados = []\r\n    \r\n    try:\r\n        for nombre in nombres_parametros:\r\n            param_def = None\r\n            # Buscar el parámetro en cualquier grupo del archivo TXT\r\n            for group in def_file.Groups:\r\n                param_def = group.Definitions.Item[nombre]\r\n                if param_def: break\r\n            \r\n            if param_def:\r\n                binding = app.Create.NewInstanceBinding(cat_set)\r\n                # Insertar (usamos el grupo PG_MATERIALS para ambos o puedes cambiarlo)\r\n                doc.ParameterBindings.Insert(param_def, binding, BuiltInParameterGroup.PG_MATERIALS)\r\n                resultados.append(\"Éxito: \" + nombre)\r\n            else:\r\n                resultados.append(\"No encontrado: \" + nombre)\r\n        \r\n        out_msg = \"\\n\".join(resultados)\r\n    except Exception as e:\r\n        out_msg = \"Error: \" + str(e)\r\n\r\n    TransactionManager.Instance.TransactionTaskDone()\r\n    OUT = out_msg",
+      "Engine": "IronPython2",
+      "EngineName": "IronPython2",
+      "VariableInputPorts": true,
+      "Id": "3c4980c9742d4d058d5549cf96f40a23",
+      "NodeType": "PythonScriptNode",
+      "Inputs": [
+        {
+          "Id": "40c2cffbd44d492881b251fe82e83953",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "c2e5684bb4bb40e9a15554b6180b387e",
+          "Name": "OUT",
+          "Description": "Resultado de la secuencia de comandos de Python",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Ejecuta una secuencia de comandos de Python incrustada."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Watch, CoreNodeModels",
+      "WatchWidth": 380.0,
+      "WatchHeight": 38.0,
+      "Id": "aa52f13c21fd470a87127b972482ab24",
+      "NodeType": "ExtensionNode",
+      "Inputs": [
+        {
+          "Id": "3cfe719dcb984a7aa677f53829d17187",
+          "Name": "",
+          "Description": "Nodo desde el que se mostrará la salida",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "b2eb9e6ad45146b99059980a1c835bd7",
+          "Name": "",
+          "Description": "Salida del nodo",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Visualice la salida del nodo."
+    }
+  ],
+  "Connectors": [
+    {
+      "Start": "c2e5684bb4bb40e9a15554b6180b387e",
+      "End": "3cfe719dcb984a7aa677f53829d17187",
+      "Id": "fdc6cb9682e340b6855e0025fb0c0240",
+      "IsHidden": "False"
+    }
+  ],
+  "Dependencies": [],
+  "NodeLibraryDependencies": [],
+  "Thumbnail": "",
+  "GraphDocumentationURL": null,
+  "ExtensionWorkspaceData": [
+    {
+      "ExtensionGuid": "28992e1d-abb9-417f-8b1b-05e053bee670",
+      "Name": "Propiedades",
+      "Version": "2.19",
+      "Data": {}
+    },
+    {
+      "ExtensionGuid": "DFBD9CC0-DB40-457A-939E-8C8555555A9D",
+      "Name": "Generative Design",
+      "Version": "6.1",
+      "Data": {}
+    }
+  ],
+  "Author": "",
+  "Linting": {
+    "activeLinter": "Ninguno",
+    "activeLinterId": "7b75fb44-43fd-4631-a878-29f4d5d8399a",
+    "warningCount": 0,
+    "errorCount": 0
+  },
+  "Bindings": [],
+  "View": {
+    "Dynamo": {
+      "ScaleFactor": 1.0,
+      "HasRunWithoutCrash": true,
+      "IsVisibleInDynamoLibrary": true,
+      "Version": "2.19.3.6394",
+      "RunType": "Manual",
+      "RunPeriod": "1000"
+    },
+    "Camera": {
+      "Name": "_Vista preliminar en segundo plano",
+      "EyeX": -17.0,
+      "EyeY": 24.0,
+      "EyeZ": 50.0,
+      "LookX": 12.0,
+      "LookY": -13.0,
+      "LookZ": -58.0,
+      "UpX": 0.0,
+      "UpY": 1.0,
+      "UpZ": 0.0
+    },
+    "ConnectorPins": [],
+    "NodeViews": [
+      {
+        "Id": "3c4980c9742d4d058d5549cf96f40a23",
+        "Name": "Python Script",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 364.0,
+        "Y": 220.0
+      },
+      {
+        "Id": "aa52f13c21fd470a87127b972482ab24",
+        "Name": "Watch",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 728.0,
+        "Y": 220.0
+      }
+    ],
+    "Annotations": [],
+    "X": 0.0,
+    "Y": 0.0,
+    "Zoom": 1.0
+  }
+}

@@ -1,0 +1,387 @@
+{
+  "Uuid": "f6157ae2-2cc2-492e-840a-953913600817",
+  "IsCustomNode": false,
+  "Description": "",
+  "Name": "Home",
+  "ElementResolver": {
+    "ResolutionMap": {}
+  },
+  "Inputs": [],
+  "Outputs": [],
+  "Nodes": [
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "Code": "import clr\r\n\r\nclr.AddReference('RevitAPI')\r\nfrom Autodesk.Revit.DB import *\r\n\r\nclr.AddReference('RevitServices')\r\nimport RevitServices\r\nfrom RevitServices.Persistence import DocumentManager\r\nfrom RevitServices.Transactions import TransactionManager\r\n\r\ndoc = DocumentManager.Instance.CurrentDBDocument\r\n\r\n# Función para manejar listas o elementos sueltos y desenrollarlos\r\ndef to_list(input):\r\n    if isinstance(input, list): return [UnwrapElement(i) for i in input]\r\n    else: return [UnwrapElement(input)]\r\n\r\nelementos = to_list(IN[0])\r\nresultados = []\r\n\r\nTransactionManager.Instance.EnsureInTransaction(doc)\r\n\r\nfor e in elementos:\r\n    try:\r\n        if e is None: continue\r\n        \r\n        # Obtener el tipo de muro/suelo\r\n        e_type = doc.GetElement(e.GetTypeId())\r\n        \r\n        # Obtener la estructura\r\n        comp_struc = e_type.GetCompoundStructure()\r\n        nombre_mat = \"Sin Material\"\r\n        \r\n        if comp_struc is not None:\r\n            # Accedemos a las capas de forma segura\r\n            capas = comp_struc.GetLayers()\r\n            for capa in capas:\r\n                m_id = capa.MaterialId\r\n                if m_id != ElementId.InvalidElementId:\r\n                    nombre_mat = doc.GetElement(m_id).Name\r\n                    break # Sale al encontrar el primer material\r\n        \r\n        # Escribir en el parámetro de INSTANCIA\r\n        param = e.LookupParameter(\"MATERIAL COMBINADO\")\r\n        if param and not param.IsReadOnly:\r\n            param.Set(nombre_mat)\r\n            resultados.append(\"Listo: \" + nombre_mat)\r\n        else:\r\n            resultados.append(\"Error: No existe el parámetro en el elemento\")\r\n            \r\n    except Exception as ex:\r\n        resultados.append(\"Fallo: \" + str(ex))\r\n\r\nTransactionManager.Instance.TransactionTaskDone()\r\n\r\nOUT = resultados",
+      "Engine": "CPython3",
+      "EngineName": "CPython3",
+      "VariableInputPorts": true,
+      "Id": "a739b986fff44236b6d52f5696c11940",
+      "NodeType": "PythonScriptNode",
+      "Inputs": [
+        {
+          "Id": "fb4b3e1e1f5b49039b451775b54c8b59",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "26738a4de2304ef7ba60c8757ffe989f",
+          "Name": "OUT",
+          "Description": "Resultado de la secuencia de comandos de Python",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Ejecuta una secuencia de comandos de Python incrustada."
+    },
+    {
+      "ConcreteType": "DSRevitNodesUI.ElementsOfCategory, DSRevitNodesUI",
+      "Id": "2d8661b23334445888a76b7a28179cbf",
+      "NodeType": "ExtensionNode",
+      "Inputs": [
+        {
+          "Id": "630d415fef28470c843517af8e076955",
+          "Name": "Category",
+          "Description": "La categoría",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "f283691630da402fafa52784f6bed69a",
+          "Name": "Elements",
+          "Description": "Una clase de elemento.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Obtiene todos los elementos de la categoría especificada en el modelo"
+    },
+    {
+      "ConcreteType": "DSRevitNodesUI.ElementsOfCategory, DSRevitNodesUI",
+      "Id": "42a7ab89ab234a7691e93dd92ead8734",
+      "NodeType": "ExtensionNode",
+      "Inputs": [
+        {
+          "Id": "d2380c1698e848d696b987c2a4a42781",
+          "Name": "Category",
+          "Description": "La categoría",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "3e9a16235cdd4652a1ac623856d90a8c",
+          "Name": "Elements",
+          "Description": "Una clase de elemento.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Obtiene todos los elementos de la categoría especificada en el modelo"
+    },
+    {
+      "ConcreteType": "CoreNodeModels.CreateList, CoreNodeModels",
+      "VariableInputPorts": true,
+      "Id": "da0e1a657b2042dab8dcf7655a2c7f7b",
+      "NodeType": "ExtensionNode",
+      "Inputs": [
+        {
+          "Id": "e171602102164b12a43ff1b23c4aed03",
+          "Name": "item0",
+          "Description": "Índice de elemento núm.0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "9a36a5854d784294bdff0ff7214e650e",
+          "Name": "item1",
+          "Description": "Índice de elemento núm.1",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "83da48449138427bbe574ac935aa9e13",
+          "Name": "list",
+          "Description": "Una lista (tipo: var[]..[])",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Crea una nueva lista a partir de las entradas especificadas."
+    },
+    {
+      "ConcreteType": "DSRevitNodesUI.Categories, DSRevitNodesUI",
+      "SelectedIndex": 499,
+      "SelectedString": "OST_Walls",
+      "Id": "d4f2dd16932447aca125a0b56e521f75",
+      "NodeType": "ExtensionNode",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "ee0e3fb83d7b4925b5de1bade927ebe4",
+          "Name": "Category",
+          "Description": "La categoría seleccionada",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Todas las categorías integradas"
+    },
+    {
+      "ConcreteType": "DSRevitNodesUI.Categories, DSRevitNodesUI",
+      "SelectedIndex": 641,
+      "SelectedString": "OST_Floors",
+      "Id": "05a29b3a01be4eccba0b9afc59d6ddf6",
+      "NodeType": "ExtensionNode",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "837e539bc1c84cc79ae663c4ad28d782",
+          "Name": "Category",
+          "Description": "La categoría seleccionada",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Todas las categorías integradas"
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.ZeroTouch.DSFunction, DynamoCore",
+      "Id": "815a4b031d664dee8df01171365770f2",
+      "NodeType": "FunctionNode",
+      "Inputs": [
+        {
+          "Id": "82d6001d9f8843eebd22ba762863cb11",
+          "Name": "list",
+          "Description": "Lista que se debe aplanar.\n\nvar[]..[]",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "ba114ed547174d86a7e295dccd41ee82",
+          "Name": "amount",
+          "Description": "Capas de anidamiento de lista que se van a eliminar (-1 eliminará todos los anidamientos de lista).\n\nint\nValor por defecto : -1",
+          "UsingDefaultValue": true,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "0eed98b7bea041ea94ced19a85d094e1",
+          "Name": "list",
+          "Description": "Lista aplanada por cantidad.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "FunctionSignature": "DSCore.List.Flatten@var[]..[],int",
+      "Replication": "Auto",
+      "Description": "Aplana una lista anidada de listas aplicando el valor especificado.\n\nList.Flatten (list: var[]..[], amount: int = -1): var[]..[]"
+    }
+  ],
+  "Connectors": [
+    {
+      "Start": "f283691630da402fafa52784f6bed69a",
+      "End": "e171602102164b12a43ff1b23c4aed03",
+      "Id": "e988075a5fb64f3eaee86f6b8429c533",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "3e9a16235cdd4652a1ac623856d90a8c",
+      "End": "9a36a5854d784294bdff0ff7214e650e",
+      "Id": "c68f32eda5e34615b4918280d9aab672",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "83da48449138427bbe574ac935aa9e13",
+      "End": "82d6001d9f8843eebd22ba762863cb11",
+      "Id": "83e097088738426bb5afa43183f68d72",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "ee0e3fb83d7b4925b5de1bade927ebe4",
+      "End": "630d415fef28470c843517af8e076955",
+      "Id": "968125f916444172843e20bdf01a25f9",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "837e539bc1c84cc79ae663c4ad28d782",
+      "End": "d2380c1698e848d696b987c2a4a42781",
+      "Id": "d3d1fac6a03b4ff6bc0306877aabf5da",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "0eed98b7bea041ea94ced19a85d094e1",
+      "End": "fb4b3e1e1f5b49039b451775b54c8b59",
+      "Id": "5b7a11255d524b1a9e0cc3e9ce8e9198",
+      "IsHidden": "False"
+    }
+  ],
+  "Dependencies": [],
+  "NodeLibraryDependencies": [],
+  "Thumbnail": "",
+  "GraphDocumentationURL": null,
+  "ExtensionWorkspaceData": [
+    {
+      "ExtensionGuid": "28992e1d-abb9-417f-8b1b-05e053bee670",
+      "Name": "Propiedades",
+      "Version": "2.19",
+      "Data": {}
+    },
+    {
+      "ExtensionGuid": "DFBD9CC0-DB40-457A-939E-8C8555555A9D",
+      "Name": "Generative Design",
+      "Version": "6.1",
+      "Data": {}
+    }
+  ],
+  "Author": "",
+  "Linting": {
+    "activeLinter": "Ninguno",
+    "activeLinterId": "7b75fb44-43fd-4631-a878-29f4d5d8399a",
+    "warningCount": 0,
+    "errorCount": 0
+  },
+  "Bindings": [],
+  "View": {
+    "Dynamo": {
+      "ScaleFactor": 1.0,
+      "HasRunWithoutCrash": true,
+      "IsVisibleInDynamoLibrary": true,
+      "Version": "2.19.3.6394",
+      "RunType": "Manual",
+      "RunPeriod": "1000"
+    },
+    "Camera": {
+      "Name": "_Vista preliminar en segundo plano",
+      "EyeX": -17.0,
+      "EyeY": 24.0,
+      "EyeZ": 50.0,
+      "LookX": 12.0,
+      "LookY": -13.0,
+      "LookZ": -58.0,
+      "UpX": 0.0,
+      "UpY": 1.0,
+      "UpZ": 0.0
+    },
+    "ConnectorPins": [],
+    "NodeViews": [
+      {
+        "Id": "a739b986fff44236b6d52f5696c11940",
+        "Name": "Python Script",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 1350.5104585891036,
+        "Y": 115.51825078584392
+      },
+      {
+        "Id": "2d8661b23334445888a76b7a28179cbf",
+        "Name": "All Elements of Category",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 212.38004241446004,
+        "Y": 38.003480798656085
+      },
+      {
+        "Id": "42a7ab89ab234a7691e93dd92ead8734",
+        "Name": "All Elements of Category",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 120.11924250263633,
+        "Y": 544.7587519464596
+      },
+      {
+        "Id": "da0e1a657b2042dab8dcf7655a2c7f7b",
+        "Name": "List Create",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 717.16081946703832,
+        "Y": 173.23629005002971
+      },
+      {
+        "Id": "d4f2dd16932447aca125a0b56e521f75",
+        "Name": "Categories",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": -329.48717557851,
+        "Y": 185.58122318317743
+      },
+      {
+        "Id": "05a29b3a01be4eccba0b9afc59d6ddf6",
+        "Name": "Categories",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": -297.65950249143043,
+        "Y": 540.28408885109286
+      },
+      {
+        "Id": "815a4b031d664dee8df01171365770f2",
+        "Name": "List.Flatten",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 957.71513227163291,
+        "Y": -63.800913035544369
+      }
+    ],
+    "Annotations": [],
+    "X": -237.62813588371739,
+    "Y": 66.492040523779963,
+    "Zoom": 0.552056227584746
+  }
+}
