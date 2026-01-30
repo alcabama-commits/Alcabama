@@ -1,10 +1,8 @@
 import clr
 
-# Importar Revit API
 clr.AddReference('RevitAPI')
 from Autodesk.Revit.DB import *
 
-# Importar DocumentManager y TransactionManager
 clr.AddReference('RevitServices')
 import RevitServices
 from RevitServices.Persistence import DocumentManager
@@ -12,53 +10,85 @@ from RevitServices.Transactions import TransactionManager
 
 doc = DocumentManager.Instance.CurrentDBDocument
 
-# 1. Obtener todos los elementos del modelo que no sean tipos
+# 1. Colectar todos los elementos de instancia en el modelo
 col = FilteredElementCollector(doc).WhereElementIsNotElementType().ToElements()
 
-# 2. Lista de parámetros en orden de prioridad
-nombres_busqueda = ["Nivel de referencia", "Nivel", "Nivel base", "Restricción de base"]
-parametro_destino = "NIVEL INTEGRADO"
+# Definiciones
+nombres_niveles = ["Nivel de referencia", "Nivel", "Nivel base", "Restricción de base"]
+param_nivel_dest = "NIVEL INTEGRADO"
+param_mat_dest = "MATERIAL INTEGRADO"
 
 TransactionManager.Instance.EnsureInTransaction(doc)
+conteo = 0
 
-conteo_exitos = 0
+def obtener_nivel_texto(elemento):
+    """Busca el nivel en un elemento según la lista de prioridades."""
+    for n in nombres_niveles:
+        p_ori = elemento.LookupParameter(n)
+        if p_ori and p_ori.HasValue:
+            # Intentar obtener como texto directo (nombre del nivel)
+            txt = p_ori.AsValueString()
+            if not txt:
+                # Si falla, obtener por ID del nivel
+                id_n = p_ori.AsElementId()
+                if id_n != ElementId.InvalidElementId:
+                    obj_n = doc.GetElement(id_n)
+                    if obj_n: return obj_n.Name
+            else:
+                return txt
+    return None
 
-for el in col:
-    # Solo procesar elementos que tengan el parámetro destino
-    p_dest = el.LookupParameter(parametro_destino)
-    
-    if p_dest and not p_dest.IsReadOnly:
-        valor_encontrado = None
+for e in col:
+    try:
+        # Verificar si el elemento tiene los parámetros destino
+        p_nivel_out = e.LookupParameter(param_nivel_dest)
+        p_mat_out = e.LookupParameter(param_mat_dest)
         
-        # 3. Buscar el primer parámetro que coincida y tenga valor
-        for nombre in nombres_busqueda:
-            p_origen = el.LookupParameter(nombre)
+        if not p_nivel_out and not p_mat_out:
+            continue
+
+        # --- LÓGICA DE NIVEL ---
+        if p_nivel_out and not p_nivel_out.IsReadOnly:
+            nivel_final = obtener_nivel_texto(e)
             
-            if p_origen and p_origen.HasValue:
-                # Intentamos obtener el valor como texto (Nombre del nivel)
-                valor_encontrado = p_origen.AsValueString()
-                
-                # Si AsValueString falla (a veces pasa en ciertos parámetros), 
-                # intentamos obtener el nombre a través del ElementId
-                if not valor_encontrado:
-                    id_nivel = p_origen.AsElementId()
-                    if id_nivel and id_nivel != ElementId.InvalidElementId:
-                        nivel_obj = doc.GetElement(id_nivel)
-                        if nivel_obj:
-                            valor_encontrado = nivel_obj.Name
-                
-                if valor_encontrado:
-                    break
-        
-        # 4. Escribir el valor en NIVEL INTEGRADO
-        if valor_encontrado:
-            try:
-                p_dest.Set(valor_encontrado)
-                conteo_exitos += 1
-            except:
-                continue
+            # CASO ESPECIAL: Si es una PIEZA (Part) y no tiene nivel propio
+            if not nivel_final and isinstance(e, Part):
+                # Obtener los elementos que originaron esta pieza
+                parent_ids = e.GetSourceElementIds()
+                for p_id in parent_ids:
+                    parent_el = doc.GetElement(p_id.ElementId)
+                    if parent_el:
+                        nivel_final = obtener_nivel_texto(parent_el)
+                        if nivel_final: break
+            
+            if nivel_final:
+                p_nivel_out.Set(nivel_final)
+
+        # --- LÓGICA DE MATERIAL (Solo si tiene el parámetro) ---
+        if p_mat_out and not p_mat_out.IsReadOnly:
+            nombre_mat = "Sin Material"
+            # Si es pieza, el material está en el parámetro de instancia 'Material'
+            if isinstance(e, Part):
+                m_p = e.get_Parameter(BuiltInParameter.DPART_MATERIAL_ID_PARAM)
+                if m_p and m_p.HasValue:
+                    nombre_mat = doc.GetElement(m_p.AsElementId()).Name
+            else:
+                # Lógica para Muros/Suelos originales (Compound Structure)
+                e_type = doc.GetElement(e.GetTypeId())
+                if e_type:
+                    comp_struc = e_type.GetCompoundStructure()
+                    if comp_struc:
+                        m_id = comp_struc.GetLayerMaterialId(comp_struc.GetFirstCoreLayerIndex())
+                        if m_id != ElementId.InvalidElementId:
+                            nombre_mat = doc.GetElement(m_id).Name
+            p_mat_out.Set(nombre_mat)
+            
+        conteo += 1
+    except:
+        continue
 
 TransactionManager.Instance.TransactionTaskDone()
+OUT = "Éxito. Se procesaron {} elementos (incluyendo Piezas)".format(conteo)
 
 # Salida con el conteo de elementos afectados
 OUT = "Proceso completado. Se actualizaron {} elementos.".format(conteo_exitos)
