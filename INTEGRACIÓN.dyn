@@ -1,0 +1,340 @@
+{
+  "Uuid": "f2d439ed-2039-41f0-92a7-4cba831a1ad5",
+  "IsCustomNode": false,
+  "Description": "",
+  "Name": "INTEGRACIÓN",
+  "ElementResolver": {
+    "ResolutionMap": {}
+  },
+  "Inputs": [],
+  "Outputs": [],
+  "Nodes": [
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "Code": "import clr\r\n\r\n# Importar Revit API\r\nclr.AddReference('RevitAPI')\r\nfrom Autodesk.Revit.DB import *\r\n\r\n# Importar DocumentManager y TransactionManager\r\nclr.AddReference('RevitServices')\r\nimport RevitServices\r\nfrom RevitServices.Persistence import DocumentManager\r\nfrom RevitServices.Transactions import TransactionManager\r\n\r\ndoc = DocumentManager.Instance.CurrentDBDocument\r\n\r\n# 1. Obtener todos los elementos del modelo que no sean tipos\r\ncol = FilteredElementCollector(doc).WhereElementIsNotElementType().ToElements()\r\n\r\n# 2. Lista de parámetros en orden de prioridad\r\nnombres_busqueda = [\"Nivel de referencia\", \"Nivel\", \"Nivel base\", \"Restricción de base\"]\r\nparametro_destino = \"NIVEL INTEGRADO\"\r\n\r\nTransactionManager.Instance.EnsureInTransaction(doc)\r\n\r\nconteo_exitos = 0\r\n\r\nfor el in col:\r\n    # Solo procesar elementos que tengan el parámetro destino\r\n    p_dest = el.LookupParameter(parametro_destino)\r\n    \r\n    if p_dest and not p_dest.IsReadOnly:\r\n        valor_encontrado = None\r\n        \r\n        # 3. Buscar el primer parámetro que coincida y tenga valor\r\n        for nombre in nombres_busqueda:\r\n            p_origen = el.LookupParameter(nombre)\r\n            \r\n            if p_origen and p_origen.HasValue:\r\n                # Intentamos obtener el valor como texto (Nombre del nivel)\r\n                valor_encontrado = p_origen.AsValueString()\r\n                \r\n                # Si AsValueString falla (a veces pasa en ciertos parámetros), \r\n                # intentamos obtener el nombre a través del ElementId\r\n                if not valor_encontrado:\r\n                    id_nivel = p_origen.AsElementId()\r\n                    if id_nivel and id_nivel != ElementId.InvalidElementId:\r\n                        nivel_obj = doc.GetElement(id_nivel)\r\n                        if nivel_obj:\r\n                            valor_encontrado = nivel_obj.Name\r\n                \r\n                if valor_encontrado:\r\n                    break\r\n        \r\n        # 4. Escribir el valor en NIVEL INTEGRADO\r\n        if valor_encontrado:\r\n            try:\r\n                p_dest.Set(valor_encontrado)\r\n                conteo_exitos += 1\r\n            except:\r\n                continue\r\n\r\nTransactionManager.Instance.TransactionTaskDone()\r\n\r\n# Salida con el conteo de elementos afectados\r\nOUT = \"Proceso completado. Se actualizaron {} elementos.\".format(conteo_exitos)",
+      "Engine": "IronPython2",
+      "EngineName": "IronPython2",
+      "VariableInputPorts": true,
+      "Id": "a1023cdfc04b4df28e05bdf21b2e273e",
+      "NodeType": "PythonScriptNode",
+      "Inputs": [
+        {
+          "Id": "c1ecc6b444b749a3855492e42151216c",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "2adfbe693bb14ab5a5facaba0911202d",
+          "Name": "OUT",
+          "Description": "Resultado de la secuencia de comandos de Python",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Ejecuta una secuencia de comandos de Python incrustada."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Watch, CoreNodeModels",
+      "WatchWidth": 395.0,
+      "WatchHeight": 38.0,
+      "Id": "23563b3929724187b7063ae71cf30595",
+      "NodeType": "ExtensionNode",
+      "Inputs": [
+        {
+          "Id": "d37bbc8f1b71498da2d3a4fb03cebf9b",
+          "Name": "",
+          "Description": "Nodo desde el que se mostrará la salida",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "e3966b918979475cbef819d8b0d8b988",
+          "Name": "",
+          "Description": "Salida del nodo",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Visualice la salida del nodo."
+    },
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "Code": "import clr\r\n\r\nclr.AddReference('RevitAPI')\r\nfrom Autodesk.Revit.DB import *\r\n\r\nclr.AddReference('RevitServices')\r\nimport RevitServices\r\nfrom RevitServices.Persistence import DocumentManager\r\nfrom RevitServices.Transactions import TransactionManager\r\n\r\ndoc = DocumentManager.Instance.CurrentDBDocument\r\n\r\n# Recolectar TODOS los elementos que no sean tipos y tengan nombre\r\ncollector = FilteredElementCollector(doc).WhereElementIsNotElementType().ToElements()\r\n\r\nresultados = []\r\n\r\nTransactionManager.Instance.EnsureInTransaction(doc)\r\n\r\nfor e in collector:\r\n    try:\r\n        if e.Category is None: continue\r\n        \r\n        nombre_mat = None\r\n        type_id = e.GetTypeId()\r\n        e_type = doc.GetElement(type_id) if type_id != ElementId.InvalidElementId else None\r\n        \r\n        # ESTRATEGIA 1: Buscar en estructuras compuestas (Muros, Suelos, Techos)\r\n        if e_type and hasattr(e_type, \"GetCompoundStructure\"):\r\n            comp_struc = e_type.GetCompoundStructure()\r\n            if comp_struc:\r\n                m_id = comp_struc.GetLayers()[0].MaterialId\r\n                if m_id != ElementId.InvalidElementId:\r\n                    nombre_mat = doc.GetElement(m_id).Name\r\n\r\n        # ESTRATEGIA 2: Si sigue vacío, buscar parámetro de Material (Columnas, Vigas, Familias cargables)\r\n        if not nombre_mat:\r\n            # Intentamos con parámetros comunes de material\r\n            for p_name in [\"Material\", \"Structural Material\", \"Material estructural\"]:\r\n                p = e.LookupParameter(p_name)\r\n                if p and p.AsElementId() != ElementId.InvalidElementId:\r\n                    nombre_mat = doc.GetElement(p.AsElementId()).Name\r\n                    break\r\n\r\n        # ESTRATEGIA 3: Buscar en el Tipo (si no está en la instancia)\r\n        if not nombre_mat and e_type:\r\n            p = e_type.LookupParameter(\"Material\")\r\n            if p and p.AsElementId() != ElementId.InvalidElementId:\r\n                nombre_mat = doc.GetElement(p.AsElementId()).Name\r\n\r\n        # ESCRIBIR RESULTADO\r\n        if nombre_mat:\r\n            param_destino = e.LookupParameter(\"MATERIAL INTEGRADO\")\r\n            if param_destino and not param_destino.IsReadOnly:\r\n                param_destino.Set(nombre_mat)\r\n                resultados.append(e.Category.Name + \": \" + nombre_mat)\r\n                \r\n    except Exception:\r\n        continue\r\n\r\nTransactionManager.Instance.TransactionTaskDone()\r\n\r\nOUT = resultados ",
+      "Engine": "IronPython2",
+      "EngineName": "IronPython2",
+      "VariableInputPorts": true,
+      "Id": "e407227a09f74d49808d4553acdd046a",
+      "NodeType": "PythonScriptNode",
+      "Inputs": [
+        {
+          "Id": "1d4767afe4014454b6ef11d4004cd06b",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "caf55a908b664b63bcb73da366045f12",
+          "Name": "OUT",
+          "Description": "Resultado de la secuencia de comandos de Python",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Ejecuta una secuencia de comandos de Python incrustada."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Watch, CoreNodeModels",
+      "WatchWidth": 200.0,
+      "WatchHeight": 200.0,
+      "Id": "6916a589cdb142d3ab4624b212b98748",
+      "NodeType": "ExtensionNode",
+      "Inputs": [
+        {
+          "Id": "0a0dcd889dd1438d9c9ee85d91a95e60",
+          "Name": "",
+          "Description": "Nodo desde el que se mostrará la salida",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "a78add8a6cb74bc9b53dfeee5388b4f2",
+          "Name": "",
+          "Description": "Salida del nodo",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Visualice la salida del nodo."
+    },
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "Code": "import clr\r\n\r\nclr.AddReference('RevitAPI')\r\nfrom Autodesk.Revit.DB import *\r\n\r\nclr.AddReference('RevitServices')\r\nimport RevitServices\r\nfrom RevitServices.Persistence import DocumentManager\r\nfrom RevitServices.Transactions import TransactionManager\r\n\r\ndoc = DocumentManager.Instance.CurrentDBDocument\r\n\r\n# Colectar todos los elementos que no sean Tipos (instancias de modelo)\r\ncollector = FilteredElementCollector(doc).WhereElementIsNotElementType().ToElements()\r\n\r\nopt = Options()\r\nopt.DetailLevel = ViewDetailLevel.Fine\r\nopt.ComputeReferences = True\r\nopt.IncludeNonVisibleObjects = False # Evita líneas ocultas que falsean la longitud\r\n\r\nTransactionManager.Instance.EnsureInTransaction(doc)\r\n\r\ncontador = 0\r\n\r\nfor el in collector:\r\n    # Saltar elementos sin categoría (como materiales o estilos)\r\n    if el.Category is None: continue\r\n    \r\n    # Solo procesar categorías de modelo comunes\r\n    if el.Category.CategoryType != CategoryType.Model: continue\r\n\r\n    try:\r\n        geom = el.get_Geometry(opt)\r\n        if not geom: continue\r\n        \r\n        vol_total = 0.0\r\n        max_f_area = 0.0\r\n        max_e_long = 0.0\r\n        encontrado = False\r\n\r\n        # Extraer todos los sólidos, incluso dentro de GeometryInstances\r\n        solidos = []\r\n        for obj in geom:\r\n            if isinstance(obj, Solid):\r\n                solidos.append(obj)\r\n            elif isinstance(obj, GeometryInstance):\r\n                # Importante: GetSymbolGeometry() para familias o GetInstanceGeometry()\r\n                solidos.extend([s for s in obj.GetInstanceGeometry() if isinstance(s, Solid)])\r\n\r\n        for s in solidos:\r\n            if s.Volume > 0.000001: # Filtro de precisión\r\n                encontrado = True\r\n                vol_total += s.Volume\r\n                for face in s.Faces:\r\n                    if face.Area > max_f_area: max_f_area = face.Area\r\n                    for loop in face.EdgeLoops:\r\n                        for edge in loop:\r\n                            if edge.ApproximateLength > max_e_long:\r\n                                max_e_long = edge.ApproximateLength\r\n\r\n        if encontrado:\r\n            # Intentar escribir en los parámetros si existen\r\n            params = {\r\n                \"VOLUMEN INTEGRADO\": vol_total,\r\n                \"AREA INTEGRADO\": max_f_area,\r\n                \"LONGITUD INTEGRADO\": max_e_long\r\n            }\r\n            \r\n            p_exito = False\r\n            for p_nombre, p_valor in params.items():\r\n                p = el.LookupParameter(p_nombre)\r\n                if p and not p.IsReadOnly:\r\n                    p.Set(p_valor)\r\n                    p_exito = True\r\n            \r\n            if p_exito: contador += 1\r\n\r\n    except:\r\n        continue\r\n\r\nTransactionManager.Instance.TransactionTaskDone()\r\n\r\nOUT = \"Listo. Se actualizaron {} elementos del modelo.\".format(contador)",
+      "Engine": "IronPython2",
+      "EngineName": "IronPython2",
+      "VariableInputPorts": true,
+      "Id": "b4a9094599004a4cb7a25c28afd20e32",
+      "NodeType": "PythonScriptNode",
+      "Inputs": [
+        {
+          "Id": "33197b63ef184481b5392395731591e3",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "e4a30cf659704247b7c8f081df560877",
+          "Name": "OUT",
+          "Description": "Resultado de la secuencia de comandos de Python",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Ejecuta una secuencia de comandos de Python incrustada."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Watch, CoreNodeModels",
+      "WatchWidth": 200.0,
+      "WatchHeight": 200.0,
+      "Id": "8841db85cf1549a493b49d8f62339b6b",
+      "NodeType": "ExtensionNode",
+      "Inputs": [
+        {
+          "Id": "fb2d6aac5a714320a00c49e51daf4ac8",
+          "Name": "",
+          "Description": "Nodo desde el que se mostrará la salida",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "85994694443d47d1b9b03444be23435c",
+          "Name": "",
+          "Description": "Salida del nodo",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Visualice la salida del nodo."
+    }
+  ],
+  "Connectors": [
+    {
+      "Start": "2adfbe693bb14ab5a5facaba0911202d",
+      "End": "d37bbc8f1b71498da2d3a4fb03cebf9b",
+      "Id": "106f262f0dae43489c948dca5cfb1d24",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "caf55a908b664b63bcb73da366045f12",
+      "End": "0a0dcd889dd1438d9c9ee85d91a95e60",
+      "Id": "5f9d6a7e48874b84befcfa2caf894497",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "e4a30cf659704247b7c8f081df560877",
+      "End": "fb2d6aac5a714320a00c49e51daf4ac8",
+      "Id": "a2f1684652d541f7b777b8a7a8aad226",
+      "IsHidden": "False"
+    }
+  ],
+  "Dependencies": [],
+  "NodeLibraryDependencies": [],
+  "Thumbnail": "",
+  "GraphDocumentationURL": null,
+  "ExtensionWorkspaceData": [
+    {
+      "ExtensionGuid": "28992e1d-abb9-417f-8b1b-05e053bee670",
+      "Name": "Propiedades",
+      "Version": "2.19",
+      "Data": {}
+    },
+    {
+      "ExtensionGuid": "DFBD9CC0-DB40-457A-939E-8C8555555A9D",
+      "Name": "Generative Design",
+      "Version": "6.1",
+      "Data": {}
+    }
+  ],
+  "Author": "",
+  "Linting": {
+    "activeLinter": "Ninguno",
+    "activeLinterId": "7b75fb44-43fd-4631-a878-29f4d5d8399a",
+    "warningCount": 0,
+    "errorCount": 0
+  },
+  "Bindings": [],
+  "View": {
+    "Dynamo": {
+      "ScaleFactor": 1.0,
+      "HasRunWithoutCrash": true,
+      "IsVisibleInDynamoLibrary": true,
+      "Version": "2.19.3.6394",
+      "RunType": "Manual",
+      "RunPeriod": "1000"
+    },
+    "Camera": {
+      "Name": "_Vista preliminar en segundo plano",
+      "EyeX": -17.0,
+      "EyeY": 24.0,
+      "EyeZ": 50.0,
+      "LookX": 12.0,
+      "LookY": -13.0,
+      "LookZ": -58.0,
+      "UpX": 0.0,
+      "UpY": 1.0,
+      "UpZ": 0.0
+    },
+    "ConnectorPins": [],
+    "NodeViews": [
+      {
+        "Id": "a1023cdfc04b4df28e05bdf21b2e273e",
+        "Name": "NIVEL INTEGRADO",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 247.17804154302667,
+        "Y": 105.60534124629083
+      },
+      {
+        "Id": "23563b3929724187b7063ae71cf30595",
+        "Name": "Watch",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 634.121661721068,
+        "Y": 105.60534124629083
+      },
+      {
+        "Id": "e407227a09f74d49808d4553acdd046a",
+        "Name": "MATERIAL INTEGRADO",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 247.17804154302667,
+        "Y": 345.05341246290794
+      },
+      {
+        "Id": "6916a589cdb142d3ab4624b212b98748",
+        "Name": "Watch",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 634.121661721068,
+        "Y": 272.33531157270022
+      },
+      {
+        "Id": "b4a9094599004a4cb7a25c28afd20e32",
+        "Name": "DIMENSIONES INTEGRADAS",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 247.17804154302667,
+        "Y": 584.50148367952511
+      },
+      {
+        "Id": "8841db85cf1549a493b49d8f62339b6b",
+        "Name": "Watch",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 637.68249258160245,
+        "Y": 586.87537091988122
+      }
+    ],
+    "Annotations": [],
+    "X": 227.7525,
+    "Y": 69.5575,
+    "Zoom": 0.8425
+  }
+}
