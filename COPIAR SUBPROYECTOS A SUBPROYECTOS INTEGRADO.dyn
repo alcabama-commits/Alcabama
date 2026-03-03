@@ -1,0 +1,160 @@
+{
+  "Uuid": "0de60349-2002-4fe6-b086-d9fcd3791d2c",
+  "IsCustomNode": false,
+  "Description": "",
+  "Name": "COPIAR SUBPROYECTOS A SUBPROYECTOS INTEGRADO",
+  "ElementResolver": {
+    "ResolutionMap": {}
+  },
+  "Inputs": [],
+  "Outputs": [],
+  "Nodes": [
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "Code": "import clr\r\n\r\n# Importar la API de Revit\r\nclr.AddReference('RevitAPI')\r\nfrom Autodesk.Revit.DB import *\r\n\r\n# Importar el Gestor de Documentos\r\nclr.AddReference('RevitServices')\r\nimport RevitServices\r\nfrom RevitServices.Persistence import DocumentManager\r\nfrom RevitServices.Transactions import TransactionManager\r\n\r\n# Obtener el documento actual\r\ndoc = DocumentManager.Instance.CurrentDBDocument\r\n\r\n# 1. Recolectar todos los elementos del modelo (excluyendo tipos)\r\ncollector = FilteredElementCollector(doc).WhereElementIsNotElementType()\r\n\r\n# 2. Iniciar la transacción para poder escribir datos\r\nTransactionManager.Instance.EnsureInTransaction(doc)\r\n\r\ncount = 0\r\nerrors = 0\r\n\r\nfor item in collector:\r\n    try:\r\n        # Obtener el ID del subproyecto del elemento\r\n        workset_id = item.WorksetId\r\n        \r\n        # Obtener el nombre del subproyecto desde la tabla de subproyectos\r\n        workset_table = doc.GetWorksetTable()\r\n        workset = workset_table.GetWorkset(workset_id)\r\n        workset_name = workset.Name\r\n        \r\n        # Buscar nuestro parámetro personalizado\r\n        param = item.LookupParameter(\"SUBPROYECTOS INTEGRADO\")\r\n        \r\n        # Si el parámetro existe y no es de solo lectura, escribimos el nombre\r\n        if param and not param.IsReadOnly:\r\n            param.Set(workset_name)\r\n            count += 1\r\n    except:\r\n        errors += 1\r\n\r\n# Finalizar la transacción\r\nTransactionManager.Instance.TransactionTaskDone()\r\n\r\n# Salida para Dynamo\r\nOUT = \"Proceso finalizado. {} elementos actualizados. {} errores.\".format(count, errors)",
+      "Engine": "IronPython2",
+      "EngineName": "IronPython2",
+      "VariableInputPorts": true,
+      "Id": "d456ed8927e94390af7e1408fafe7c30",
+      "NodeType": "PythonScriptNode",
+      "Inputs": [
+        {
+          "Id": "33c24706752049abb33cd81d98fc2e4b",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "d051bc769d6f47e3bbb946e34cbab542",
+          "Name": "OUT",
+          "Description": "Resultado de la secuencia de comandos de Python",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Ejecuta una secuencia de comandos de Python incrustada."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Watch, CoreNodeModels",
+      "WatchWidth": 420.0,
+      "WatchHeight": 38.0,
+      "Id": "ff4bb3a95ff044499c3e876834ae0370",
+      "NodeType": "ExtensionNode",
+      "Inputs": [
+        {
+          "Id": "cdfba42f320944ff900ec4473175ee8c",
+          "Name": "",
+          "Description": "Nodo desde el que se mostrará la salida",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "6f098bb42c9249b59102ad39c977abd4",
+          "Name": "",
+          "Description": "Salida del nodo",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Visualice la salida del nodo."
+    }
+  ],
+  "Connectors": [
+    {
+      "Start": "d051bc769d6f47e3bbb946e34cbab542",
+      "End": "cdfba42f320944ff900ec4473175ee8c",
+      "Id": "1494800eeca54a5b8c4402be302780aa",
+      "IsHidden": "False"
+    }
+  ],
+  "Dependencies": [],
+  "NodeLibraryDependencies": [],
+  "Thumbnail": "",
+  "GraphDocumentationURL": null,
+  "ExtensionWorkspaceData": [
+    {
+      "ExtensionGuid": "28992e1d-abb9-417f-8b1b-05e053bee670",
+      "Name": "Propiedades",
+      "Version": "2.19",
+      "Data": {}
+    },
+    {
+      "ExtensionGuid": "DFBD9CC0-DB40-457A-939E-8C8555555A9D",
+      "Name": "Generative Design",
+      "Version": "6.1",
+      "Data": {}
+    }
+  ],
+  "Author": "",
+  "Linting": {
+    "activeLinter": "Ninguno",
+    "activeLinterId": "7b75fb44-43fd-4631-a878-29f4d5d8399a",
+    "warningCount": 0,
+    "errorCount": 0
+  },
+  "Bindings": [],
+  "View": {
+    "Dynamo": {
+      "ScaleFactor": 1.0,
+      "HasRunWithoutCrash": true,
+      "IsVisibleInDynamoLibrary": true,
+      "Version": "2.19.3.6394",
+      "RunType": "Manual",
+      "RunPeriod": "1000"
+    },
+    "Camera": {
+      "Name": "_Vista preliminar en segundo plano",
+      "EyeX": -17.0,
+      "EyeY": 24.0,
+      "EyeZ": 50.0,
+      "LookX": 12.0,
+      "LookY": -13.0,
+      "LookZ": -58.0,
+      "UpX": 0.0,
+      "UpY": 1.0,
+      "UpZ": 0.0
+    },
+    "ConnectorPins": [],
+    "NodeViews": [
+      {
+        "Id": "d456ed8927e94390af7e1408fafe7c30",
+        "Name": "Python Script",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 598.0,
+        "Y": 263.0
+      },
+      {
+        "Id": "ff4bb3a95ff044499c3e876834ae0370",
+        "Name": "Watch",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 1051.0,
+        "Y": 253.0
+      }
+    ],
+    "Annotations": [],
+    "X": 0.0,
+    "Y": 0.0,
+    "Zoom": 1.0
+  }
+}
