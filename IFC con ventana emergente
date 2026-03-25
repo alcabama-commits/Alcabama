@@ -1,0 +1,47 @@
+import clr
+import os
+
+# Cargar API de Revit
+clr.AddReference('RevitAPI')
+from Autodesk.Revit.DB import *
+
+clr.AddReference('RevitServices')
+import RevitServices
+from RevitServices.Persistence import DocumentManager
+from RevitServices.Transactions import TransactionManager
+
+doc = DocumentManager.Instance.CurrentDBDocument
+
+# --- ENTRADA DESDE EL REPRODUCTOR ---
+folder_path = IN[0]
+
+# --- VALIDACIÓN DE ENTRADA ---
+if not folder_path or folder_path == "":
+    OUT = "Por favor, seleccione una carpeta en el Reproductor de Dynamo."
+else:
+    # Obtener nombre del archivo de Revit
+    file_name = doc.Title.split(".rvt")[0]
+
+    # Configuración de exportación
+    options = IFCExportOptions()
+    options.FileVersion = IFCVersion.IFC2x3CV2
+    options.AddOption("ExportInternalRevitPropertySets", "True")
+    options.AddOption("ExportPartsAsElements", "True")
+    options.AddOption("LocationContext", "Shared")
+    options.AddOption("ExportVisibleElementsInView", "True")
+    options.FilterViewId = doc.ActiveView.Id
+    options.SpaceBoundaryLevel = 0 
+
+    # Proceso
+    TransactionManager.Instance.EnsureInTransaction(doc)
+    try:
+        success = doc.Export(folder_path, file_name, options)
+        if success:
+            OUT = "EXITO: IFC guardado como " + file_name + ".ifc"
+        else:
+            OUT = "ERROR: Revit no pudo exportar."
+    except Exception as e:
+        OUT = "ERROR: " + str(e)
+    TransactionManager.Instance.TransactionTaskDone()
+
+
