@@ -1,0 +1,57 @@
+#Este código crea IFC sin ventana emergente, colocando directamente el sitio donde se alamcenará el IFC en una carpeta de windows
+import clr
+import os
+
+# Cargar API de Revit
+clr.AddReference('RevitAPI')
+from Autodesk.Revit.DB import *
+
+clr.AddReference('RevitServices')
+import RevitServices
+from RevitServices.Persistence import DocumentManager
+from RevitServices.Transactions import TransactionManager
+
+doc = DocumentManager.Instance.CurrentDBDocument
+
+# --- ENTRADAS DE DYNAMO ---
+folder_path = IN[0]
+
+# --- OBTENER NOMBRE DEL ARCHIVO ACTUAL ---
+raw_name = doc.Title
+# Limpiar el .rvt si existe y posibles sufijos de Backup (0001)
+file_name = raw_name.split(".rvt")[0]
+
+# --- CONFIGURACIÓN DE EXPORTACIÓN ---
+options = IFCExportOptions()
+
+# Definir la versión IFC
+options.FileVersion = IFCVersion.IFC2x3CV2
+
+# Usamos AddOption para los parámetros que fallaron anteriormente
+# Esto es mucho más estable entre distintas versiones de Revit
+options.AddOption("ExportInternalRevitPropertySets", "True")
+options.AddOption("ExportPartsAsElements", "True")
+options.AddOption("LocationContext", "Shared")
+options.AddOption("ExportVisibleElementsInView", "True")
+
+# Configuración de vista y espacios
+options.FilterViewId = doc.ActiveView.Id
+options.SpaceBoundaryLevel = 0 
+
+# --- PROCESO DE EXPORTACIÓN ---
+TransactionManager.Instance.EnsureInTransaction(doc)
+
+try:
+    if not os.path.exists(folder_path):
+        OUT = "Error: La carpeta de destino no existe."
+    else:
+        # El método Export devuelve True si tiene éxito
+        success = doc.Export(folder_path, file_name, options)
+        if success:
+            OUT = "Exportación exitosa: " + file_name + ".ifc"
+        else:
+            OUT = "Revit no pudo completar la exportación."
+except Exception as e:
+    OUT = "Error en el script: " + str(e)
+
+TransactionManager.Instance.TransactionTaskDone()
