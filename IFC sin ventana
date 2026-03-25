@@ -55,3 +55,11 @@ except Exception as e:
     OUT = "Error en el script: " + str(e)
 
 TransactionManager.Instance.TransactionTaskDone()
+
+
+#INSTRUCCIONES: Cómo configurar los nodos en Dynamo:
+IN[0] (Folder Path): Conecta un nodo de tipo Directory Path o un String con la ruta de la carpeta (ej. C:\Proyectos\IFC).
+
+IN[1] (File Name): Conecta un String con el nombre que quieras para el archivo (ej. Modelo_Arquitectura).
+
+Vista Activa: Asegúrate de estar en la vista 3D que tiene los elementos visibles que deseas exportar antes de ejecutar el script, ya que el código usa doc.ActiveView.Id.
