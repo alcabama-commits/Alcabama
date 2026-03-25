@@ -45,3 +45,7 @@ else:
     TransactionManager.Instance.TransactionTaskDone()
 
 
+
+#INSTRUCCIONES: Asegúrate de que el nodo Directory Path esté conectado a la entrada IN[0] del Python.
+Haz clic derecho sobre el nodo Directory Path y verifica que esté marcada la opción "Es entrada" (Is Input).
+Guarda el archivo .dyn.
